@@ -8,6 +8,7 @@
 #include <glm/ext.hpp> // << friends
 
 #include <random>
+#include <sstream>
 
 using namespace std;
 using namespace glm;
@@ -20,10 +21,7 @@ public:
   Image() : w(0), h(0) {};
 
   Image(int w, int h) 
-    : w(w), h(h) {
-    for(int i = 0; i < w*h; i++)
-      pixels.emplace_back(vec3(0));
-  }
+    : w(w), h(h), pixels(w*h) { };
 
   void save(string filename) {
     ofstream ofs(filename);
@@ -41,16 +39,26 @@ public:
     ifs.open(filename, std::ios::binary); // need to spec. binary mode for Windows users
     try {
       if (ifs.fail()) { throw("Can't open input file"); }
-      std::string header;
-      int b;
-      ifs >> header;
-      cerr << "header: " << header << endl;
-      if (strcmp(header.c_str(), "P6") != 0) throw("Can't read input file");
-      ifs.ignore(256, '#'); // skip comments
-      ifs.ignore(256, '\n'); // skip empty lines in necessary until we get to the binary data
-      ifs >> w >> h >> b;
-      cerr << "b " << b << endl;
-      ifs.ignore(256, '\n'); // skip empty lines in necessary until we get to the binary data
+      std::string line;
+      getline(ifs,line);
+      if (line != "P6") throw("Can't read input file");
+      bool inHeader = true;
+      w = h = 0;
+      while(inHeader) {
+	getline(ifs,line);
+	if (line.empty() || line[0] == '#')
+	  continue;
+	//	cerr << line << endl;
+	if (0 == w) {
+	  istringstream iss(line);
+	  int b;
+	  iss >> w >> h >> b;
+	} else {
+	  inHeader = false;
+	}
+      }
+
+      cerr << "read header, now for the data " << endl;
       unsigned char pix[3];
       // read each pixel one by one and convert bytes to floats
       for (int i = 0; i < w * h; ++i) {
@@ -66,9 +74,7 @@ public:
       ifs.close();
     }
     cerr << "Dimensons: " << w << " x " << h << endl;
-
   }
-
 };
 
 glm::vec3 randomVec3() {
@@ -97,13 +103,17 @@ struct Voronoi {
   int w, h;
   Voronoi(int w, int h) : w(w), h(h) {};
   VoronoiPoint nearest(const ivec2& p) const {
-    auto best = vps.front();
-    auto dist = best.dist(p);
-    for(auto vp : vps) {
-      auto candidate = vp.dist(p);
+    return vps[nearestIdx(p)];
+  }
+
+  int nearestIdx(const ivec2& p) const {
+    auto best = 0;
+    auto dist = vps[best].dist(p);
+    for(int i = 1; i < vps.size(); i++) {
+      auto candidate = vps[i].dist(p);
       if (candidate < dist) {
 	dist = candidate;
-	best = vp;
+	best = i;
       }
     }
     return best;
@@ -129,11 +139,27 @@ struct Voronoi {
     }
     return voronoi;
   }
+  static Voronoi randomSampleImage(const Image& img, int cnt = 42) {
+    Voronoi v = random(img.w, img.h, cnt);
+    vector<int> hits(cnt);
+    for(int j = 0; j < v.h; j++) {
+      for(int i = 0; i < v.w; i++) {
+	ivec2 p(i,j);
+	auto idx = v.nearestIdx(p);
+	hits[idx]++;
+	v.vps[idx].col += img.pixels[i + v.w * j];
+      }
+    }
+    for(int i = 0; i < cnt; i++) {
+      v.vps[i].col /= float(hits[i]);
+    }
+    return v;
+  }
 };
 
 int main(int argc, char *argv[]) {
-  if (argc < 2) {
-    printf("usage %s input.ppm\n", argv[0]);
+  if (argc < 3) {
+    printf("usage %s input.ppm cnt [out.ppm]\n", argv[0]);
     printf("But you get a random voronoi Image at \"test.ppm\"\n");
     auto v = Voronoi::random(256, 256);
     auto img = v.render();
@@ -143,7 +169,14 @@ int main(int argc, char *argv[]) {
 
   Image img;
   img.load(argv[1]);
-  img.save("test.ppm");
+  auto cnt = atoi(argv[2]);
+  auto outfile = "hest.ppm";
+  if (argc > 3)
+    outfile = argv[3];
+
+  auto v = Voronoi::randomSampleImage(img, 400);
+  auto i = v.render();
+  i.save(outfile);
   return 0;
 }
 
