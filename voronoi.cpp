@@ -70,7 +70,6 @@ public:
   }
 
 };
-Image img(512, 512);
 
 glm::vec3 randomVec3() {
   static std::random_device rd;
@@ -82,54 +81,63 @@ glm::vec3 randomVec3() {
 struct VoronoiPoint {
   ivec2 p;
   vec3 col;
-  VoronoiPoint()
+  VoronoiPoint(int w, int h)
     : col(randomVec3()) {
     auto rnd = randomVec3();
-    p.x = img.w * rnd.x;
-    p.y = img.h * rnd.y;
+    p.x = w * rnd.x;
+    p.y = h * rnd.y;
   }
   int dist(const ivec2& o) const{
     return (p.x-o.x)*(p.x-o.x) + (p.y-o.y)*(p.y-o.y);
   }
 };
 
-vector<VoronoiPoint> vps;
-VoronoiPoint nearest(ivec2& p) {
-  auto best = vps.front();
-  auto dist = best.dist(p);
-  for(auto vp : vps) {
-    auto candidate = vp.dist(p);
-    if (candidate < dist) {
-      dist = candidate;
-      best = vp;
+struct Voronoi {
+  vector<VoronoiPoint> vps;
+  int w, h;
+  Voronoi(int w, int h) : w(w), h(h) {};
+  VoronoiPoint nearest(const ivec2& p) const {
+    auto best = vps.front();
+    auto dist = best.dist(p);
+    for(auto vp : vps) {
+      auto candidate = vp.dist(p);
+      if (candidate < dist) {
+	dist = candidate;
+	best = vp;
+      }
     }
+    return best;
   }
-  return best;
-}
 
-void render() {
-  for(int j = 0; j < img.h; j++) {
-    for(int i = 0; i < img.w; i++) {
-      ivec2 p(i,j);
-      auto vp = nearest(p);
-      img.pixels[i + j * img.w] = vp.col;
+  Image render() const {
+    Image res(w,h);
+    for(int j = 0; j < h; j++) {
+      for(int i = 0; i < w; i++) {
+	ivec2 p(i,j);
+	auto vp = nearest(p);
+	res.pixels[i + j * w] = vp.col;
+      }
     }
+    return res;
   }
-}
 
-void randomVoronoiImage() {
-  for(int i = 0; i < 42 ; i++) {
-    vps.emplace_back(VoronoiPoint());
-    // cout << to_string(vps.back().p) << " -> " << to_string(vps.back().col) << endl;
+  static Voronoi random(int w, int h, int cnt = 42) {
+    Voronoi voronoi(w,h);
+    for(int i = 0; i < cnt ; i++) {
+      voronoi.vps.emplace_back(VoronoiPoint(w,h));
+      // cout << to_string(vps.back().p) << " -> " << to_string(vps.back().col) << endl;
+    }
+    return voronoi;
   }
-  render();
-  img.save("hest.ppm");
-
-}
+};
 
 int main(int argc, char *argv[]) {
   if (argc < 2) {
     printf("usage %s input.ppm\n", argv[0]);
+    printf("But you get a random voronoi Image at \"test.ppm\"\n");
+    auto v = Voronoi::random(256, 256);
+    auto img = v.render();
+    img.save("test.ppm");
     return 0;
   }
 

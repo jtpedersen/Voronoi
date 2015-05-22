@@ -1,2 +1,11 @@
 *~
 
+/.ninja_deps
+/.ninja_log
+/CMakeCache.txt
+/CMakeFiles/
+/bin/
+/build.ninja
+/cmake_install.cmake
+/rules.ninja
+/test.ppm
