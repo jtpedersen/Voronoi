@@ -20,8 +20,17 @@ IF (ASAN)
 ENDIF()
 
 ADD_EXECUTABLE(
-	voronoi
-	voronoi.cpp
+  voronoi
+  voronoi.cpp
+  Image.cpp
+  common.cpp
+  )
+
+
+ADD_EXECUTABLE(
+  test_kd
+  test_kd.cpp
+  kdtree.cpp
   )
 
 
