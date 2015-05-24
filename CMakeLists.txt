@@ -24,6 +24,7 @@ ADD_EXECUTABLE(
   voronoi.cpp
   Image.cpp
   common.cpp
+  kdtree.cpp
   )
 
 
@@ -31,6 +32,7 @@ ADD_EXECUTABLE(
   test_kd
   test_kd.cpp
   kdtree.cpp
+  common.cpp
   )
 
 

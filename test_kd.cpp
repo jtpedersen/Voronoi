@@ -82,6 +82,23 @@ bool simpleSearch() {
     return true;
 }
 
+bool randdomSearch() {
+    KDTree t;
+
+    // insert some random points [-.5,.5]
+    for(int i = 0; i < 100; i++) {
+	t.insert(KDNode(vec2(util::randf()-.5f,util::randf()-.5f), i));
+    }
+
+    t.insert(KDNode(vec2(0,0), 1337));
+    
+    auto n = t.findNearest(vec2(0,0));
+    ASSERT( n.idx == 1337, "search the tree");
+    return true;
+}
+
+
+
 int main(int argc, char *argv[]) {
     return ! ( 
 	instantiate()
@@ -89,5 +106,6 @@ int main(int argc, char *argv[]) {
 	&& nodestart()
 	&& insertSplitY()
 	&& simpleSearch()
+	&& randdomSearch()
 	);
 }

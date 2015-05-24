@@ -1,4 +1,5 @@
 #include "Image.h"
+#include "kdtree.h"
 
 #include <iostream>
 #include <fstream>
@@ -34,30 +35,28 @@ struct Voronoi {
     vector<VoronoiPoint> vps;
     vector<int> hits;
     vector<float> errors;
+    KDTree kdtree;
     int w, h, cnt;
     Voronoi(int w, int h, int cnt = 42) : w(w), h(h) , cnt(cnt){
 	for(int i = 0; i < cnt ; i++) {
 	    vps.emplace_back(VoronoiPoint(w,h));
+	    kdtree.insert(KDNode(vps.back().p, i));
 	    hits.emplace_back(0);
 	    errors.emplace_back(0);
 	}
+//	kdtree.dumpNodes(cerr);
     }
 
     VoronoiPoint nearest(const vec2& p) const {
 	return vps[nearestIdx(p)];
     }
-
+//	
     int nearestIdx(const vec2& p) const {
-	auto best = 0;
-	auto dist = vps[best].dist(p);
-	for(int i = 1; i < vps.size(); i++) {
-	    auto candidate = vps[i].dist(p);
-	    if (candidate < dist) {
-		dist = candidate;
-		best = i;
-	    }
-	}
-	return best;
+	int res = kdtree.findNearest(p).idx;
+	// cout << res << endl;
+	assert(res >= 0);
+	assert(res < vps.size());
+	return res;
     }
 
     Image render() const {
@@ -115,6 +114,7 @@ struct Voronoi {
   
 
     void permuteBasedOnError(float temperature) {
+	kdtree.clear();
 	for(int i = 0; i < cnt; i++) {
 	    assert((errors[i] * temperature) >= 0);
 	    auto prob = errors[i] * temperature;
@@ -130,6 +130,7 @@ struct Voronoi {
 	    assert(p.y >= 0);
 	    assert(p.x < w);
 	    assert(p.y < w);
+	    kdtree.insert(KDNode(p, i));
 	}
     }
   
@@ -144,15 +145,11 @@ struct Voronoi {
 };
 
 
-
-
-
-
 int main(int argc, char *argv[]) {
-    if (argc < 3) {
-	printf("usage %s input.ppm cnt [out.ppm]\n", argv[0]);
+    if (argc < 4) {
+	printf("usage %s input.ppm cnt iterations \n", argv[0]);
 	printf("But you get a random voronoi Image at \"test.ppm\"\n");
-	auto v = Voronoi(256, 256);
+	auto v = Voronoi(1024, 1024, 256);
 	auto img = v.render();
 	img.save("test.ppm");
 	return 0;
@@ -161,23 +158,21 @@ int main(int argc, char *argv[]) {
     img.load(argv[1]);
     auto cnt = atoi(argv[2]);
     auto outfile = "hest.ppm";
-    auto iterations = 100;
-    if (argc > 3)
-	outfile = argv[3];
+    auto iterations = atoi(argv[3]);
 
     auto v = Voronoi(img.w, img.h, cnt);
     v.sampleImageAndMeasureError(img);
     for(int i =0; i < iterations; i ++) {
-	v.permuteBasedOnError(1.0);
+	auto t = (1.0 + iterations - i) / iterations;
+	v.permuteBasedOnError( 10 * t );
 	v.sampleImageAndMeasureError(img);
-	char buf[128];
-	sprintf(buf, "iteration-%04d.ppm", i);
-	auto tmp = v.render();
-	tmp.save(buf);
+	// char buf[128];
+	// sprintf(buf, "iteration-%04d.ppm", i);
+	// auto tmp = v.render();
+	// tmp.save(buf);
 
-
-	sprintf(buf, "iteration-%04d.dat", i);
-	v.dump(buf);
+	// sprintf(buf, "iteration-%04d.dat", i);
+	// v.dump(buf);
 
     }
     auto i = v.render();

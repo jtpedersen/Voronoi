@@ -42,7 +42,6 @@ bool KDTree::leftOf(const KDNode& r, const vec2& p) const {
     }
 }
 
-
 void KDTree::insertLastInTree(KDNode& r) {
     const auto& n = nodes.back();
     if (leftOf(r, n)) {
@@ -59,14 +58,14 @@ const KDNode& KDTree::findNearest(const vec2& p) const {
     float r2 = 10e99;
     int best = -1;
     nnsearch(p, 0, r2, best);
-    cout << "nnsearched for: " << to_string(p) << " (r2=" << r2 << ", best=" << best << ")" << endl;
+    //cout << "nnsearched for: " << to_string(p) << " (r2=" << r2 << ", best=" << best << ")" << endl;
 
     return nodes[best];
 }
 
 void KDTree::nnsearch(const vec2& p, int root, float &r2, int& best) const {
     if (root == -1) return;
-    cout << "nnsearch for: " << to_string(p) << "@" << root << " (r2=" << r2 << ", best=" << best << ")" << endl;
+//    cout << "nnsearch for: " << to_string(p) << "@" << root << " (r2=" << r2 << ", best=" << best << ")" << endl;
     float d2 = distance2(p, nodes[root].p);
     if (d2 < r2) {
 	r2 = d2;
@@ -85,10 +84,19 @@ void KDTree::nnsearch(const vec2& p, int root, float &r2, int& best) const {
     }
 }
 
-    
-
 const KDNode& KDTree::operator[] (size_t idx) const {
     if (nodes.empty())
 	throw std::runtime_error("no nodes in tree");
     return nodes[idx];
+}
+
+
+void KDTree::clear() {
+    nodes.clear();
+}
+
+void KDTree::dumpNodes(ostream& os) {
+    for (auto n : nodes) {
+	os << "data: " << n.idx << " split: " << n.axis << "(" << n.left << ", " << n.right << ") @" << to_string(n.p) << endl;
+    }
 }
