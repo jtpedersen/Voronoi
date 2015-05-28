@@ -35,6 +35,7 @@ struct Voronoi {
     vector<VoronoiPoint> vps;
     vector<int> hits;
     vector<float> errors;
+    vector<vec3> edgeAverage;
     KDTree kdtree;
     int w, h, cnt;
     Voronoi(int w, int h, int cnt = 42) : w(w), h(h) , cnt(cnt){
@@ -43,6 +44,7 @@ struct Voronoi {
 	    kdtree.insert(KDNode(vps.back().p, i));
 	    hits.emplace_back(0);
 	    errors.emplace_back(0);
+	    edgeAverage.emplace_back(vec3(0));
 	}
 //	kdtree.dumpNodes(cerr);
     }
@@ -71,9 +73,8 @@ struct Voronoi {
 	return res;
     }
 
-    void sampleImageAndMeasureError(const Image& img) {
+    void setColorFromImageAverage(const Image& img) {
 	for(auto& h: hits) h = 0;
-	for(auto& e: errors) e = 0;
 	for(auto& vp: vps) { vp.col.x = vp.col.y = vp.col.z = 0;}
 	for(int j = 0; j < h; j++) {
 	    for(int i = 0; i < w; i++) {
@@ -88,21 +89,23 @@ struct Voronoi {
 		vps[i].col /= float(hits[i]);
 	    }
 	}
+
+    }
+
+    void measureError(const Image& edges) {
+	for(auto& e: errors) e = 0;
+	float sum = 0;
 	for(int j = 0; j < h; j++) {
 	    for(int i = 0; i < w; i++) {
 		vec2 p(i,j);
 		auto idx = nearestIdx(p);
-		errors[idx] += glm::distance2(vps[idx].col, img.pixels[i + w * j]);
-		assert(isfinite(errors[idx]));
+		auto dist = distance2(p, vps[idx].p);
+		auto err =  (length2(edges.pixels[j*w + i])) / (.1f + dist);
+		errors[idx] += err;
+		sum += err;
 	    }
 	}
-	float sum = 0;
-	for(int i = 0; i < cnt; i++) {
-	    if (hits[i] > 1) {
-		errors[i] /= float(hits[i]);
-		sum += errors[i];
-	    }
-	}
+
 	cerr << "total error: " << sum << endl;
     }
     glm::vec3 permutation() {
@@ -118,7 +121,7 @@ struct Voronoi {
 	for(int i = 0; i < cnt; i++) {
 	    assert((errors[i] * temperature) >= 0);
 	    auto prob = errors[i] * temperature;
-	    if (prob > util::randf()) continue;
+	    if (prob < util::randf()) continue;
 	    auto disturbance = permutation();
 	    auto& p = vps[i].p;
 	    p.x += disturbance.x;
@@ -160,27 +163,30 @@ int main(int argc, char *argv[]) {
     auto outfile = "hest.ppm";
     auto iterations = atoi(argv[3]);
 
-    auto tmp = img.edgy();
-    tmp.save("edgy.ppm");
+    auto edges = img.edgy();
 
 
-    // auto v = Voronoi(img.w, img.h, cnt);
-    // v.sampleImageAndMeasureError(img);
-    // for(int i =0; i < iterations; i ++) {
-    // 	auto t = (1.0 + iterations - i) / iterations;
-    // 	v.permuteBasedOnError( 10 * t );
-    // 	v.sampleImageAndMeasureError(img);
-    // 	// char buf[128];
-    // 	// sprintf(buf, "iteration-%04d.ppm", i);
-    // 	// auto tmp = v.render();
-    // 	// tmp.save(buf);
+    auto v = Voronoi(img.w, img.h, cnt);
+    for(int i =0; i < iterations; i ++) {
 
-    // 	// sprintf(buf, "iteration-%04d.dat", i);
-    // 	// v.dump(buf);
+	v.measureError(edges);
+	auto t = (1.0 + iterations - i) / iterations;
+    	v.permuteBasedOnError( 100 * t );
 
-    // }
-    // auto i = v.render();
-    // i.save(outfile);
+
+#if 1
+	v.setColorFromImageAverage(img);
+    	char buf[128];
+    	sprintf(buf, "iteration-%04d.ppm", i);
+    	auto tmp = v.render();
+    	tmp.save(buf);
+#endif
+    	// sprintf(buf, "iteration-%04d.dat", i);
+    	// v.dump(buf);
+
+    }
+    auto i = v.render();
+    i.save(outfile);
     return 0;
 }
 
