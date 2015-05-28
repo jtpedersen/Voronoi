@@ -57,3 +57,42 @@ void Image::load(string filename) {
     }
     cerr << "Dimensons: " << w << " x " << h << endl;
 }
+
+vec3 Image::convolve(int x, int y, const array<float, 9>& kernel) {
+  vec3 res(0);
+  for(int j = 0; j < 3; j++) {
+    for(int i = 0; i < 3; i++) {
+      res += kernel[j*3 + i] * pixels[(y+j) * w + (i + x)];
+    }
+  }  
+  return res*res;
+}
+
+
+Image Image::edgy() {
+  
+  array<float, 9> kernel = { -1, -1, -1, 
+			     -1, 8, -1, 
+			     -1, -1, -1};
+  Image res(w,h);
+
+  for(int j = 1; j < h-1; j++) {
+    for(int i = 1; i < w-1; i++) {
+      auto idx = j * w + i;
+      res.pixels[idx] = convolve(i,j, kernel);
+    }
+  }
+
+  // edges of image
+  for(int x = 0; x < w; x++) {
+    res.pixels[x] = vec3(0);
+    res.pixels[(h-1) * w + x] = vec3(0);
+  }
+  for(int y = 0; y < h; y++) {
+    res.pixels[y*w] = vec3(0);
+    res.pixels[(w-1) +  (w * y)] = vec3(0);
+  }
+
+  return res;
+  
+}

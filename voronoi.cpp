@@ -160,23 +160,27 @@ int main(int argc, char *argv[]) {
     auto outfile = "hest.ppm";
     auto iterations = atoi(argv[3]);
 
-    auto v = Voronoi(img.w, img.h, cnt);
-    v.sampleImageAndMeasureError(img);
-    for(int i =0; i < iterations; i ++) {
-	auto t = (1.0 + iterations - i) / iterations;
-	v.permuteBasedOnError( 10 * t );
-	v.sampleImageAndMeasureError(img);
-	// char buf[128];
-	// sprintf(buf, "iteration-%04d.ppm", i);
-	// auto tmp = v.render();
-	// tmp.save(buf);
+    auto tmp = img.edgy();
+    tmp.save("edgy.ppm");
 
-	// sprintf(buf, "iteration-%04d.dat", i);
-	// v.dump(buf);
 
-    }
-    auto i = v.render();
-    i.save(outfile);
+    // auto v = Voronoi(img.w, img.h, cnt);
+    // v.sampleImageAndMeasureError(img);
+    // for(int i =0; i < iterations; i ++) {
+    // 	auto t = (1.0 + iterations - i) / iterations;
+    // 	v.permuteBasedOnError( 10 * t );
+    // 	v.sampleImageAndMeasureError(img);
+    // 	// char buf[128];
+    // 	// sprintf(buf, "iteration-%04d.ppm", i);
+    // 	// auto tmp = v.render();
+    // 	// tmp.save(buf);
+
+    // 	// sprintf(buf, "iteration-%04d.dat", i);
+    // 	// v.dump(buf);
+
+    // }
+    // auto i = v.render();
+    // i.save(outfile);
     return 0;
 }
 
