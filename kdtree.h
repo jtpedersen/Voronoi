@@ -14,12 +14,16 @@ struct KDNode {
 
 class KDTree {
 public:
+    KDTree();
+    void build();
     void insert(const KDNode& n);
     const KDNode& findNearest(const vec2& p) const;
-    const KDNode& operator[] (size_t idx) const;
+    KDNode& operator[] (size_t idx);
     void nnsearch(const vec2& p, int root, float &r2, int& best) const;
     void clear();
+    void rebuild();
     void dumpNodes(ostream& os);
+    size_t getSize() const;
 private:
     void insertLastInTree(KDNode& r);
     void insertLeft(KDNode& r);
@@ -28,6 +32,7 @@ private:
     bool leftOf(const KDNode& r, const vec2& p) const;
 
     vector<KDNode> nodes;
+    size_t size;
 };
 
 

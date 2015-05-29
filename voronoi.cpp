@@ -35,33 +35,23 @@ struct VoronoiPoint {
 };
 
 struct Voronoi {
-    vector<VoronoiPoint> vps;
     vector<int> hits;
     vector<float> errors;
-    vector<vec3> edgeAverage;
+    vector<vec3> colors;
     KDTree kdtree;
     int w, h, cnt;
     Voronoi(int w, int h, int cnt = 42) : w(w), h(h) , cnt(cnt){
 	for(int i = 0; i < cnt ; i++) {
-	    vps.emplace_back(VoronoiPoint(w,h));
-	    kdtree.insert(KDNode(vps.back().p, i));
+	    vec2 p = util::randomVec2();
+	    p.x *= w;
+	    p.y *= h;
+	    kdtree.insert(KDNode(p,i));
+	    colors.emplace_back(util::randomVec3());
 	    hits.emplace_back(0);
 	    errors.emplace_back(0);
-	    edgeAverage.emplace_back(vec3(0));
 	}
+	kdtree.build();
 //	kdtree.dumpNodes(cerr);
-    }
-
-    VoronoiPoint nearest(const vec2& p) const {
-	return vps[nearestIdx(p)];
-    }
-//	
-    int nearestIdx(const vec2& p) const {
-	size_t res = kdtree.findNearest(p).idx;
-	// cout << res << endl;
-	assert(res >= 0);
-	assert(res < vps.size());
-	return res;
     }
 
     Image render() const {
@@ -69,8 +59,8 @@ struct Voronoi {
 	for(int j = 0; j < h; j++) {
 	    for(int i = 0; i < w; i++) {
 		vec2 p(i,j);
-		auto vp = nearest(p);
-		res.pixels[i + j * w] = vp.col;
+		auto idx = kdtree.findNearest(p).idx;
+		res.pixels[i + j * w] = colors[idx];
 	    }
 	}
 	return res;
@@ -78,18 +68,18 @@ struct Voronoi {
 
     void setColorFromImageAverage(const Image& img) {
 	for(auto& h: hits) h = 0;
-	for(auto& vp: vps) { vp.col.x = vp.col.y = vp.col.z = 0;}
+	for(auto& c: colors) { c.x = c.y = c.z = 0;}
 	for(int j = 0; j < h; j++) {
 	    for(int i = 0; i < w; i++) {
 		vec2 p(i,j);
-		auto idx = nearestIdx(p);
+		auto idx = kdtree.findNearest(p).idx;
 		hits[idx]++;
-		vps[idx].col += img.pixels[i + w * j];
+		colors[idx] += img.pixels[i + w * j];
 	    }
 	}
 	for(int i = 0; i < cnt; i++) {
-	    if (hits[i] > 1) {
-		vps[i].col /= float(hits[i]);
+	    if (hits[i] > 0) {
+		colors[i] /= float(hits[i]);
 	    }
 	}
 
@@ -101,10 +91,10 @@ struct Voronoi {
 	for(int j = 0; j < h; j++) {
 	    for(int i = 0; i < w; i++) {
 		vec2 p(i,j);
-		auto idx = nearestIdx(p);
-		auto dist = distance2(p, vps[idx].p);
+		auto kdnode = kdtree.findNearest(p);
+		auto dist = distance2(p, kdnode.p);
 		auto err =  (length2(edges.pixels[j*w + i])) / (.1f + dist);
-		errors[idx] += err;
+		errors[kdnode.idx] += err;
 		sum += err;
 	    }
 	}
@@ -120,13 +110,13 @@ struct Voronoi {
   
 
     void permuteBasedOnError(float temperature) {
-	kdtree.clear();
+
 	for(int i = 0; i < cnt; i++) {
 	    //assert((errors[i] * temperature) >= 0);
 	    auto prob = errors[i] * temperature;
 	    if (prob < util::randf()) continue;
 	    auto disturbance = permutation();
-	    auto& p = vps[i].p;
+	    auto& p = kdtree[i].p;
 	    p.x += disturbance.x;
 	    p.y += disturbance.y;
 	    p.x = std::max(std::min(p.x, float(w-1) ), 0.0f);
@@ -136,15 +126,16 @@ struct Voronoi {
 	    assert(p.y >= 0);
 	    assert(p.x < w);
 	    assert(p.y < w);
-	    kdtree.insert(KDNode(p, i));
+
 	}
+	kdtree.rebuild();
     }
   
     void dump(std::string filename) {
 	ofstream ofs(filename);
 	for(int i = 0; i < cnt; i++) {
 	    char buf[2048];
-	    sprintf(buf, "%04d %2.3f %2.3f %03d %f\n", i, vps[i].p.x, vps[i].p.y, hits[i], errors[i]);
+	    sprintf(buf, "%04d %2.3f %2.3f %03d %f\n", i, kdtree[i].p.x, kdtree[i].p.y, hits[i], errors[i]);
 	    ofs << buf;
 	}
     }
@@ -176,7 +167,7 @@ uint8_t f2b(float f)  {
 void sendToDisplay(const Image& img) {
     for(int i = 0; i < img.w * img.h; i++) {
 	auto p = img.pixels[i];
-	tex_pixels[i] = f2b(p.x) << 16 | f2b(p.y) | f2b(p.z);
+	tex_pixels[i] = (f2b(p.x) << 16) | (f2b(p.y) << 8 ) | f2b(p.z);
     }
     // draw
     SDL_UpdateTexture(tex, NULL, tex_pixels, img.w * sizeof(uint32_t));

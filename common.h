@@ -20,7 +20,7 @@ using namespace glm;
 namespace util {
     float randf();
     glm::vec3 randomVec3();
-
+    glm::vec2 randomVec2();
 }
 
 #endif /* !COMMON_H_ */

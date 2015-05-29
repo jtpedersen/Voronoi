@@ -12,5 +12,8 @@ namespace util {
     glm::vec3 randomVec3() {
 	return glm::vec3(randf(), randf(), randf());
     }
+    glm::vec2 randomVec2() {
+	return glm::vec2(randf(), randf());
+    }
 }
 
