@@ -21,6 +21,6 @@ namespace util {
     float randf();
     glm::vec3 randomVec3();
 
-};
+}
 
 #endif /* !COMMON_H_ */

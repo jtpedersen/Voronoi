@@ -13,6 +13,9 @@
 #include <random>
 #include <sstream>
 
+#include <SDL2/SDL.h>
+
+
 using namespace std;
 using namespace glm;
 
@@ -54,7 +57,7 @@ struct Voronoi {
     }
 //	
     int nearestIdx(const vec2& p) const {
-	int res = kdtree.findNearest(p).idx;
+	size_t res = kdtree.findNearest(p).idx;
 	// cout << res << endl;
 	assert(res >= 0);
 	assert(res < vps.size());
@@ -119,7 +122,7 @@ struct Voronoi {
     void permuteBasedOnError(float temperature) {
 	kdtree.clear();
 	for(int i = 0; i < cnt; i++) {
-	    assert((errors[i] * temperature) >= 0);
+	    //assert((errors[i] * temperature) >= 0);
 	    auto prob = errors[i] * temperature;
 	    if (prob < util::randf()) continue;
 	    auto disturbance = permutation();
@@ -148,6 +151,41 @@ struct Voronoi {
 };
 
 
+SDL_Texture  *tex        = nullptr; 
+SDL_Renderer *renderer   = nullptr;
+SDL_Window   *win        = nullptr;
+uint32_t     *tex_pixels = nullptr;
+void startDisplay(int w, int h) { 
+    if (0 != SDL_Init(SDL_INIT_EVERYTHING) ) exit(42);
+    SDL_CreateWindowAndRenderer(w, h, SDL_WINDOW_SHOWN | SDL_WINDOW_OPENGL, &win, &renderer);
+    if(nullptr == win || nullptr == renderer) exit(42);
+
+    tex_pixels = new uint32_t[w*h];
+    for(int i = 0; i < w * h; i++) {
+	tex_pixels[i] = 0;
+    }
+    tex = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, w, h);
+    SDL_UpdateTexture(tex, NULL, tex_pixels, w * sizeof(uint32_t));
+
+}
+
+uint8_t f2b(float f)  {
+    return static_cast<uint8_t>(f*255);
+}
+
+void sendToDisplay(const Image& img) {
+    for(int i = 0; i < img.w * img.h; i++) {
+	auto p = img.pixels[i];
+	tex_pixels[i] = f2b(p.x) << 16 | f2b(p.y) | f2b(p.z);
+    }
+    // draw
+    SDL_UpdateTexture(tex, NULL, tex_pixels, img.w * sizeof(uint32_t));
+    SDL_Rect rect = {0, 0, img.w, img.h};
+    SDL_RenderCopy(renderer, tex, NULL, &rect);
+}
+
+
+
 int main(int argc, char *argv[]) {
     if (argc < 4) {
 	printf("usage %s input.ppm cnt iterations \n", argv[0]);
@@ -157,36 +195,67 @@ int main(int argc, char *argv[]) {
 	img.save("test.ppm");
 	return 0;
     }
+
     Image img;
     img.load(argv[1]);
     auto cnt = atoi(argv[2]);
-    auto outfile = "hest.ppm";
     auto iterations = atoi(argv[3]);
-
     auto edges = img.edgy();
 
-
+    startDisplay(img.w, img.h);
+    sendToDisplay(img);
+    // double T0 = 1000;
+    // double scale = .000001;
     auto v = Voronoi(img.w, img.h, cnt);
-    for(int i =0; i < iterations; i ++) {
 
+
+    SDL_Event e;
+    float fps = 10.0;
+    auto start_time = SDL_GetTicks();
+
+    int iteration = 0;
+    while(1) {
+	iteration++;
 	v.measureError(edges);
-	auto t = (1.0 + iterations - i) / iterations;
+	auto t = (1.0 + iterations ) / iterations;
     	v.permuteBasedOnError( 100 * t );
-
 
 #if 1
 	v.setColorFromImageAverage(img);
-    	char buf[128];
-    	sprintf(buf, "iteration-%04d.ppm", i);
-    	auto tmp = v.render();
-    	tmp.save(buf);
+	sendToDisplay(v.render());
 #endif
     	// sprintf(buf, "iteration-%04d.dat", i);
     	// v.dump(buf);
 
+
+
+// check input
+	while (SDL_PollEvent(&e)){
+	    if (e.type == SDL_QUIT || SDLK_q == e.key.keysym.sym) exit(0);
+	}
+
+// display
+
+
+
+// calc FPS
+	auto end_time = SDL_GetTicks();
+	auto dt = end_time - start_time;
+	fps = fps * .9 + .1 * (1000.0 / dt);
+	start_time = end_time;
+
+	char buf[512];
+	sprintf(buf, "%s (%3d ms, %.2f fps)",
+		argv[0], dt, fps);
+
+	SDL_SetWindowTitle(win, buf);
+	SDL_RenderPresent(renderer);
+
     }
-    auto i = v.render();
-    i.save(outfile);
+    SDL_DestroyRenderer(renderer);
+    SDL_DestroyWindow(win);
+    SDL_Quit();
+    
     return 0;
 }
 

@@ -1,9 +1,9 @@
 #include "Image.h"
 
-Image::Image() : w(0), h(0) {};
+Image::Image() : w(0), h(0) {}
 
 Image::Image(int w, int h) 
-    : w(w), h(h), pixels(w*h) { };
+    : w(w), h(h), pixels(w*h) { }
 
 void Image::save(string filename) {
     ofstream ofs(filename);
@@ -60,8 +60,8 @@ void Image::load(string filename) {
 
 vec3 Image::convolve(int x, int y, const array<float, 9>& kernel) {
   vec3 res(0);
-  for(int j = 0; j < 3; j++) {
-    for(int i = 0; i < 3; i++) {
+  for(int j = - 1; j < 2; j++) {
+    for(int i = - 1; i < 2; i++) {
       res += kernel[j*3 + i] * pixels[(y+j) * w + (i + x)];
     }
   }  

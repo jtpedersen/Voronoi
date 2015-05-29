@@ -40,6 +40,9 @@ bool KDTree::leftOf(const KDNode& r, const vec2& p) const {
     } else if (r.axis == 1) {
 	return (p.y < r.p.y);
     }
+    
+    assert(0);
+    return false;
 }
 
 void KDTree::insertLastInTree(KDNode& r) {

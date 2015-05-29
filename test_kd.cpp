@@ -25,6 +25,7 @@ bool findEmpty() {
     KDTree t;
     try {
 	auto n = t.findNearest(vec2(0));
+	if (n.idx > 42) return false && "should never happen";
     }  catch (const std::runtime_error& e) {
 	ASSERT( true, "thows with not elements");
     }
