@@ -58,13 +58,22 @@ void Image::load(string filename) {
     cerr << "Dimensons: " << w << " x " << h << endl;
 }
 
+static bool isfinite(vec3 v) {
+    return isfinite(v.x) && isfinite(v.y) && isfinite(v.z);
+}
+
 vec3 Image::convolve(int x, int y, const array<float, 9>& kernel) {
   vec3 res(0);
+  assert(x >= 0); assert(y>=0);
+  int idx = 0;
   for(int j = - 1; j < 2; j++) {
     for(int i = - 1; i < 2; i++) {
-      res += kernel[j*3 + i] * pixels[(y+j) * w + (i + x)];
+	assert(isfinite(kernel[idx]));
+	res += kernel[idx] * pixels[(y+j) * w + (i + x)];
+	idx++;
     }
   }  
+  assert(isfinite(res));
   return res*res;
 }
 

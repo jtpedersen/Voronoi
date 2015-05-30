@@ -14,6 +14,7 @@ struct KDNode {
 
 class KDTree {
 public:
+    KDTree(const KDTree& other);
     KDTree();
     void build();
     void insert(const KDNode& n);

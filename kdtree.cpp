@@ -2,11 +2,19 @@
 
 #include <stdexcept>
 
+KDTree::KDTree(const KDTree& other) {
+    size = other.size;
+    nodes = other.nodes;
+    static int trees = 0;
+    trees++;
+//    cout <<  "Constructing the " << trees <<"'th tree" << endl;
+}
+
 KDTree::KDTree()
     : size(0) 
 {
-
 }
+
 void KDTree::insert(const KDNode& n) {
     nodes.emplace_back(n);
 }

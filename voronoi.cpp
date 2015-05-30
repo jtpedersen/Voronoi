@@ -40,6 +40,8 @@ struct Voronoi {
     vector<vec3> colors;
     KDTree kdtree;
     int w, h, cnt;
+    float current_error;
+    Image *edges;
     Voronoi(int w, int h, int cnt = 42) : w(w), h(h) , cnt(cnt){
 	for(int i = 0; i < cnt ; i++) {
 	    vec2 p = util::randomVec2();
@@ -85,21 +87,23 @@ struct Voronoi {
 
     }
 
-    void measureError(const Image& edges) {
-	for(auto& e: errors) e = 0;
+    float measureError(const KDTree& kdtree) const {
 	float sum = 0;
 	for(int j = 0; j < h; j++) {
 	    for(int i = 0; i < w; i++) {
 		vec2 p(i,j);
 		auto kdnode = kdtree.findNearest(p);
 		auto dist = distance2(p, kdnode.p);
-		auto err =  (length2(edges.pixels[j*w + i])) / (.1f + dist);
-		errors[kdnode.idx] += err;
+		assert(std::isfinite(dist));
+		auto err =  (length2(edges->pixels[j*w + i])) / (.1f + dist);
+		assert(std::isfinite(length2(edges->pixels[j*w + i])));
+		assert(std::isfinite(err));
 		sum += err;
 	    }
 	}
-
-	cerr << "total error: " << sum << endl;
+	assert(std::isfinite(sum));
+	//cerr << "total error: " << sum << endl;
+	return sum;
     }
     glm::vec3 permutation() {
 	static std::random_device rd;
@@ -110,25 +114,48 @@ struct Voronoi {
   
 
     void permuteBasedOnError(float temperature) {
+	if (current_error == 0)
+	    current_error = measureError(kdtree);
 
+	auto nextTree = KDTree(kdtree);
+	int moved = 0;
 	for(int i = 0; i < cnt; i++) {
 	    //assert((errors[i] * temperature) >= 0);
-	    auto prob = errors[i] * temperature;
-	    if (prob < util::randf()) continue;
+
+	    if ( util::randf() < 0.01f) continue;
 	    auto disturbance = permutation();
-	    auto& p = kdtree[i].p;
-	    p.x += disturbance.x;
-	    p.y += disturbance.y;
+	    auto& p = nextTree[i].p;
+	    p.x += 100.0f * temperature * disturbance.x;
+	    p.y += 100.0f * temperature * disturbance.y;
 	    p.x = std::max(std::min(p.x, float(w-1) ), 0.0f);
 	    p.y = std::max(std::min(p.y, float(h-1) ), 0.0f);
   
 	    assert(p.x >= 0);
 	    assert(p.y >= 0);
 	    assert(p.x < w);
-	    assert(p.y < w);
-
+	    assert(p.y < h);
+	    moved++;
 	}
-	kdtree.rebuild();
+//	printf("%d points moved\n", moved);
+
+	if (moved == 0)
+	    return;
+	cout << "T: " << temperature << "|";
+	nextTree.rebuild();
+	float newError = measureError(nextTree);
+	auto diff =  current_error - newError;
+	auto prob = diff * temperature;
+	prob = std::max(.001f, prob);
+
+	if (diff > 0  ||  util::randf() < exp(diff/T)) {
+	    kdtree.clear();
+	    kdtree = nextTree;
+	    current_error = newError;
+	    cout << "taken:";
+	} else {
+	    cout << "      ";
+	}
+	cout << " |" << current_error << " diff: " << diff << ", prob: " << prob << endl;
     }
   
     void dump(std::string filename) {
@@ -178,7 +205,7 @@ void sendToDisplay(const Image& img) {
 
 
 int main(int argc, char *argv[]) {
-    if (argc < 4) {
+    if (argc < 3) {
 	printf("usage %s input.ppm cnt iterations \n", argv[0]);
 	printf("But you get a random voronoi Image at \"test.ppm\"\n");
 	auto v = Voronoi(1024, 1024, 256);
@@ -190,26 +217,30 @@ int main(int argc, char *argv[]) {
     Image img;
     img.load(argv[1]);
     auto cnt = atoi(argv[2]);
-    auto iterations = atoi(argv[3]);
     auto edges = img.edgy();
-
+    
     startDisplay(img.w, img.h);
     sendToDisplay(img);
     // double T0 = 1000;
     // double scale = .000001;
     auto v = Voronoi(img.w, img.h, cnt);
-
+    v.edges = &edges;
 
     SDL_Event e;
     float fps = 10.0;
     auto start_time = SDL_GetTicks();
 
+    double T0 = 10000;
+    double scale = .0001;
+    double T = T0;
+    double k = 1.0;
     int iteration = 0;
     while(1) {
 	iteration++;
-	v.measureError(edges);
-	auto t = (1.0 + iterations ) / iterations;
-    	v.permuteBasedOnError( 100 * t );
+
+//	auto t = (1.0 + iterations ) / iterations;
+	T = T0 * exp(-scale*k);
+    	v.permuteBasedOnError( T );
 
 #if 1
 	v.setColorFromImageAverage(img);

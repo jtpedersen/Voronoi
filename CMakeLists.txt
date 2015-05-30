@@ -14,7 +14,7 @@ FIND_PACKAGE(SDL2 REQUIRED)
 INCLUDE_DIRECTORIES(${SDL2_INCLUDE_DIR})
 
 SET(CMAKE_CXX_FLAGS_DEBUG "-g -p -O0 -Wall -pedantic -Werror ")
-SET(CMAKE_CXX_FLAGS_RELEASE "-O3 -march=native -flto")
+SET(CMAKE_CXX_FLAGS_RELEASE "-O3 -march=native -flto -DNDEBUG")
 
 OPTION(ASAN "Use adresss sanitizer" OFF)
 IF (ASAN)
