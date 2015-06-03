@@ -19,7 +19,6 @@
 using namespace std;
 using namespace glm;
 
-
 struct VoronoiPoint {
     vec2 p;
     vec3 col;
@@ -84,7 +83,6 @@ struct Voronoi {
 		colors[i] /= float(hits[i]);
 	    }
 	}
-
     }
 
     float measureError(const KDTree& kdtree) const {
@@ -125,8 +123,8 @@ struct Voronoi {
 	    if ( util::randf() < 0.01f) continue;
 	    auto disturbance = permutation();
 	    auto& p = nextTree[i].p;
-	    p.x += 100.0f * temperature * disturbance.x;
-	    p.y += 100.0f * temperature * disturbance.y;
+	    p.x += temperature * disturbance.x;
+	    p.y += temperature * disturbance.y;
 	    p.x = std::max(std::min(p.x, float(w-1) ), 0.0f);
 	    p.y = std::max(std::min(p.y, float(h-1) ), 0.0f);
   
@@ -144,10 +142,11 @@ struct Voronoi {
 	nextTree.rebuild();
 	float newError = measureError(nextTree);
 	auto diff =  current_error - newError;
-	auto prob = diff * temperature;
-	prob = std::max(.001f, prob);
+	float prob = (-diff / float(w*h)) * temperature;
+	// prob = std::max(.001f, prob);
 
-	if (diff > 0  ||  util::randf() < exp(diff/T)) {
+
+	if (diff > 0  ||  util::randf() < prob) {
 	    kdtree.clear();
 	    kdtree = nextTree;
 	    current_error = newError;
@@ -202,8 +201,6 @@ void sendToDisplay(const Image& img) {
     SDL_RenderCopy(renderer, tex, NULL, &rect);
 }
 
-
-
 int main(int argc, char *argv[]) {
     if (argc < 3) {
 	printf("usage %s input.ppm cnt iterations \n", argv[0]);
@@ -230,8 +227,8 @@ int main(int argc, char *argv[]) {
     float fps = 10.0;
     auto start_time = SDL_GetTicks();
 
-    double T0 = 10000;
-    double scale = .0001;
+    double T0 = 100;
+    double scale = .01;
     double T = T0;
     double k = 1.0;
     int iteration = 0;
@@ -239,7 +236,7 @@ int main(int argc, char *argv[]) {
 	iteration++;
 
 //	auto t = (1.0 + iterations ) / iterations;
-	T = T0 * exp(-scale*k);
+	T = T * exp(-scale*k);
     	v.permuteBasedOnError( T );
 
 #if 1
@@ -248,8 +245,6 @@ int main(int argc, char *argv[]) {
 #endif
     	// sprintf(buf, "iteration-%04d.dat", i);
     	// v.dump(buf);
-
-
 
 // check input
 	while (SDL_PollEvent(&e)){

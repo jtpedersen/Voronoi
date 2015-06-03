@@ -17,6 +17,8 @@ public:
     void load(string filename);
     /// return a edge detected version
     Image edgy();
+    /// rmse from erroe
+    vec3 rmse(const Image& ref) const;
     vec3 convolve(int x, int y, const array<float, 9>& kernel);
 };
 

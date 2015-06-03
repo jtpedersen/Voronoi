@@ -101,7 +101,16 @@ Image Image::edgy() {
     res.pixels[y*w] = vec3(0);
     res.pixels[(w-1) +  (w * y)] = vec3(0);
   }
-
   return res;
-  
+}
+
+
+vec3 Image::rmse(const Image& ref) const {
+  if (ref.w != w || ref.h != h)
+    throw new std::runtime_error("image dimensions does not matcth");
+  auto res = vec3(0);
+  for(int idx = 0; idx < w * h; idx++) {
+    res += distance2(pixels[idx], ref.pixels[idx]);
+  }
+  return res;
 }

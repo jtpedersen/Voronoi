@@ -9,3 +9,5 @@
 /rules.ninja
 /test.ppm
 /build/*
+/iteration-*.dat
+/iteration-*.ppm
