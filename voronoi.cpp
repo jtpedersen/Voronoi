@@ -19,20 +19,6 @@
 using namespace std;
 using namespace glm;
 
-struct VoronoiPoint {
-  vec2 p;
-  vec3 col;
-  VoronoiPoint(int w, int h)
-    : col(util::randomVec3()) {
-    auto rnd = util::randomVec3();
-    p.x = w * rnd.x;
-    p.y = h * rnd.y;
-  }
-  int dist(const vec2& o) const{
-    return (p.x-o.x)*(p.x-o.x) + (p.y-o.y)*(p.y-o.y);
-  }
-};
-
 struct Voronoi {
   vector<int> hits;
   vector<vec3> colors;
@@ -62,7 +48,6 @@ struct Voronoi {
       hits.emplace_back(0);
       colors.emplace_back(vec3(0));
     }
-
   }
 
   Image render() const {
@@ -126,7 +111,6 @@ struct Voronoi {
     return glm::vec3(box_dist(gen), box_dist(gen), box_dist(gen));
   }
   
-
   void permuteBasedOnError(float temperature) {
     if (current_error == 0)
       current_error = measureError(kdtree);
@@ -183,7 +167,6 @@ void startDisplay(int w, int h) {
   }
   tex = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, w, h);
   SDL_UpdateTexture(tex, NULL, tex_pixels, w * sizeof(uint32_t));
-
 }
 
 uint8_t f2b(float f)  {
@@ -234,14 +217,11 @@ int main(int argc, char *argv[]) {
   int mode = 0;
   while(1) {
     iteration++;
-
-
     // check input
     while (SDL_PollEvent(&e)){
       if (e.type == SDL_QUIT || SDLK_q == e.key.keysym.sym) exit(0);
       if (SDLK_m == e.key.keysym.sym) mode++;
     }
-
     // cool down
     T = T * exp(-scale*k);
     v.permuteBasedOnError( T );
@@ -254,9 +234,6 @@ int main(int argc, char *argv[]) {
       sendToDisplay(edges);
     }
 #endif
-
-
-
     // calc FPS
     auto end_time = SDL_GetTicks();
     auto dt = end_time - start_time;
@@ -266,10 +243,8 @@ int main(int argc, char *argv[]) {
     char buf[512];
     sprintf(buf, "%s (%3d ms, %.2f fps)",
 	    argv[0], dt, fps);
-
     SDL_SetWindowTitle(win, buf);
     SDL_RenderPresent(renderer);
-
   }
   SDL_DestroyRenderer(renderer);
   SDL_DestroyWindow(win);
